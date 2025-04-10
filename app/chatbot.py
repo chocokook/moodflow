@@ -1,9 +1,8 @@
-import openai
-import os
-from dotenv import load_dotenv
+import streamlit as st
+from openai import OpenAI
 
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# ✅ 使用 st.secrets 更安全
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Persona prompt templates
 persona_prompts = {
@@ -26,22 +25,25 @@ persona_prompts = {
 
 def get_chatbot_response(user_input: str, persona: str, history: list = []) -> dict:
     """Return chatbot reply and 2-3 wellness suggestions based on persona tone."""
+
     messages = [
         {"role": "system", "content": persona_prompts.get(persona, persona_prompts["🧘 Calm Therapist"])}
     ]
+
     for entry in history[-3:]:  # limit memory to last 3 logs
         messages.append({"role": "user", "content": entry["text"]})
         messages.append({"role": "assistant", "content": entry["response"]})
 
     messages.append({"role": "user", "content": user_input})
 
-    response = openai.ChatCompletion.create(
+    # ✅ 使用新版 API 调用方式
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=messages,
         temperature=0.7
     )
 
-    full_reply = response["choices"][0]["message"]["content"]
+    full_reply = response.choices[0].message.content
 
     # Extract suggestions heuristically (bulleted or numbered)
     suggestions = []
