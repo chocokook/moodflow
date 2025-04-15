@@ -29,21 +29,10 @@ It lets you express your feelings, receive personalized support from AI with dif
 
 ---
 
-## 🚀 How to Run
+##🚀 Try It Live
+You can use MoodFlow directly in your browser — no installation needed:
 
-### 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/moodflow.git cd moodflow
-
-
-### 2. Install dependencies
-
-### 3. Set up your OpenAI API key
-
-Copy the `.env.example` file:
-
-
-Then open `.env` and add your API key:
-
+👉 https://moodflow-3dhkv8g9xp3wazeraee8gb.streamlit.app/
 
 ---
 
