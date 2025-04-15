@@ -3,7 +3,7 @@ import streamlit as st
 from openai import OpenAI
 
 # set OpenAI API key
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def get_chatbot_response(user_input, persona="🧘 Calm Therapist"):
     """
