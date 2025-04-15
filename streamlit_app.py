@@ -1,25 +1,30 @@
 import streamlit as st
-import json
-import os
+from datetime import datetime
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
-from app.sentiment_analysis import analyze_sentiment, map_score_to_emoji
+import os
+import json
+
 from app.chatbot import get_chatbot_response
+from app.sentiment_analysis import analyze_sentiment, map_score_to_emoji
 
 LOG_PATH = "app/data/user_logs.json"
 
 st.set_page_config(page_title="MoodFlow", layout="centered")
-st.title("🧘 MoodFlow - Your Emotion Companion")
 
-# Persona selector
+# initialize session state
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# persona selection
+st.title("🧘 MoodFlow - Your Emotion Companion")
 persona = st.selectbox("Choose MoodFlow's tone today:", [
     "🧘 Calm Therapist",
     "🧑‍🏫 CBT Coach",
     "🤗 Cheerful Friend"
 ])
 
-# Load logs
+# load logs
 if not os.path.exists(LOG_PATH):
     os.makedirs("app/data", exist_ok=True)
     with open(LOG_PATH, "w") as f:
@@ -28,56 +33,61 @@ if not os.path.exists(LOG_PATH):
 with open(LOG_PATH, "r") as f:
     logs = json.load(f)
 
-# Chat input
-user_input = st.text_area("How are you feeling today?", height=120)
+# display chat history
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-if st.button("Talk to MoodFlow"):
-    if user_input.strip():
-        ai_mood_score = analyze_sentiment(user_input)
-        emoji = map_score_to_emoji(ai_mood_score)
 
-        with st.spinner("MoodFlow is thinking..."):
-            reply_data = get_chatbot_response(user_input, persona, history=logs)
+user_input = st.chat_input("How are you feeling today?")
+if user_input:
+    # display user input in chat
+    st.chat_message("user").markdown(user_input)
+    st.session_state.messages.append({"role": "user", "content": user_input})
 
-        st.markdown("### 🤖 MoodFlow's Response")
-        st.write(reply_data["reply"])
+    # analyze sentiment and map to emoji
+    ai_mood_score = analyze_sentiment(user_input)
+    emoji = map_score_to_emoji(ai_mood_score)
 
-        st.markdown("### 📝 Suggested Actions")
-        for i, suggestion in enumerate(reply_data["suggestions"]):
-            st.write(f"{i+1}. {suggestion}")
+    # get chatbot response
+    with st.spinner("MoodFlow is thinking..."):
+        reply_data = get_chatbot_response(user_input, persona)
 
-        # Feedback form
-        with st.form("feedback_form"):
-            st.markdown("### 🧩 Did you try any of the suggestions?")
-            tried = st.radio("Tried?", ["Yes", "No"], horizontal=True)
-            helpfulness = st.slider("Helpfulness Score (1-5)", 1, 5, 3)
-            comment = st.text_area("Optional comment (e.g., what worked, what didn’t)")
-            submitted = st.form_submit_button("Save Log")
+    # show AI response in chat
+    st.chat_message("assistant").markdown(reply_data["reply"])
+    st.session_state.messages.append({"role": "assistant", "content": reply_data["reply"]})
 
-        if submitted:
-            log_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "text": user_input,
-                "response": reply_data["reply"],
-                "ai_mood_score": ai_mood_score,
-                "emoji": emoji,
-                "suggestions": reply_data["suggestions"],
-                "feedback": {
-                    "tried": tried == "Yes",
-                    "helpfulness_score": helpfulness,
-                    "comment": comment
-                },
-                "user_rating": helpfulness
-            }
-            logs.append(log_entry)
-            with open(LOG_PATH, "w") as f:
-                json.dump(logs, f, ensure_ascii=False, indent=2)
-            st.success("Your entry has been saved! 💾")
+    # collect feedback
+    with st.form("feedback_form"):
+        st.markdown("### 🧩 Did you try any of the suggestions?")
+        tried = st.radio("Tried?", ["Yes", "No"], horizontal=True)
+        helpfulness = st.slider("Helpfulness Score (1-5)", 1, 5, 3)
+        comment = st.text_area("Optional comment (e.g., what worked, what didn’t)")
+        submitted = st.form_submit_button("Save Log")
 
-# Visualize mood trend
+    if submitted:
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "text": user_input,
+            "response": reply_data["reply"],
+            "ai_mood_score": ai_mood_score,
+            "emoji": emoji,
+            "suggestions": reply_data["suggestions"],
+            "feedback": {
+                "tried": tried == "Yes",
+                "helpfulness_score": helpfulness,
+                "comment": comment
+            },
+            "user_rating": helpfulness
+        }
+        logs.append(log_entry)
+        with open(LOG_PATH, "w") as f:
+            json.dump(logs, f, ensure_ascii=False, indent=2)
+        st.success("Your entry has been saved! 💾")
+
+# visualize mood trend
 if logs:
     st.markdown("## 📈 Your Mood Trend")
-
     df = pd.DataFrame([
         {
             "Day": i + 1,
